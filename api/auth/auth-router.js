@@ -9,7 +9,7 @@ router.post("/register", requiredFields, checkUserExists, (req, res, next) => {
   const { username, password } = req.user;
   if (req.user.exists !== true) {
     const hash = bcrypt.hashSync(password, 8); // Go for exactly 2^8 rounds of hashing.
-    Users.add({ username, password: hash })
+    Users.create({ username, password: hash })
       .then((result) => {
         res.status(201).json(result);
       })
