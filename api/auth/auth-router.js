@@ -1,18 +1,22 @@
-const router = require('express').Router();
+const router = require("express").Router();
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 const Users = require("./users-model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const {requiredFields, checkUserExists} = require('../middleware');
+const { requiredFields, checkUserExists } = require("../middleware");
 
-router.post('/register', requiredFields, (req, res, next) => {
+router.post("/register", requiredFields, checkUserExists, (req, res, next) => {
   const { username, password } = req.user;
-  const hash = bcrypt.hashSync(password, 8); // Go for exactly 2^8 rounds of hashing.
-  Users.add({ username, password: hash })
-    .then((result) => {
-      res.status(201).json(result);
-    })
-    .catch(next);
+  if (req.user.exists !== true) {
+    const hash = bcrypt.hashSync(password, 8); // Go for exactly 2^8 rounds of hashing.
+    Users.add({ username, password: hash })
+      .then((result) => {
+        res.status(201).json(result);
+      })
+      .catch(next);
+  } else {
+    next({ status: 400, message: "username taken" });
+  }
 
   /*
     IMPLEMENT
@@ -41,16 +45,17 @@ router.post('/register', requiredFields, (req, res, next) => {
   */
 });
 
-router.post('/login', requiredFields, checkUserExists, (req, res, next) => {
-  // USING UNTRIMMED USERNAME / PASSWORD...
-  if (bcrypt.compareSync(req.body.password, req.user.password)) {
+router.post("/login", requiredFields, checkUserExists, (req, res, next) => {
+  if (req.user.exists === false) {
+    next({ status: 400, message: "invalid credentials" });
+  } else if (bcrypt.compareSync(req.body.password.trim(), req.user.password)) {
     const token = makeToken(req.user);
     res.json({
       message: `Welcome, ${req.user.username}!`,
-      token: token
-    })
+      token: token,
+    });
   } else {
-    next({status: 400, message: "invalid credentials"})
+    next({ status: 400, message: "invalid credentials" });
   }
 
   /*
